@@ -4,6 +4,7 @@ use probe_rs::probe::list::Lister;
 use serde::{Deserialize, Serialize};
 use tokio_serial::available_ports;
 use tokio_serial::SerialPortType;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DebugProbeSummary {
     pub identifier: String,
@@ -25,7 +26,6 @@ pub struct SerialPortSummary {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ConnectedDevices {
     pub debug_probes: Vec<DebugProbeSummary>,
-
     pub serial_ports: Vec<SerialPortSummary>,
 }
 
@@ -61,7 +61,6 @@ async fn list_all_devices() -> Result<ConnectedDevices, String> {
             let mut product = None;
             let mut serial_number = None;
 
-            // Extract USB-specific fields if the port is a USB port
             if let SerialPortType::UsbPort(usb_info) = p.port_type {
                 usb_vid = Some(usb_info.vid);
                 usb_pid = Some(usb_info.pid);
@@ -81,17 +80,21 @@ async fn list_all_devices() -> Result<ConnectedDevices, String> {
         })
         .collect();
 
-    // Combine results into the ConnectedDevices struct
     Ok(ConnectedDevices {
         debug_probes: debug_probe_summaries,
         serial_ports: serial_port_summaries,
     })
 }
 
-// The main function for your Tauri application
 fn main() {
+    // Fix Linux Wayland protocol crash
+    #[cfg(target_os = "linux")]
+    {
+        std::env::set_var("GDK_BACKEND", "x11");
+        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+    }
+
     tauri::Builder::default()
-        // Register the new command so it can be called from the frontend
         .invoke_handler(tauri::generate_handler![list_all_devices])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
