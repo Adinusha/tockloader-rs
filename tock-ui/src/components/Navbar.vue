@@ -1,5 +1,6 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
+import { listen } from '@tauri-apps/api/event';
 import { useRouter, useRoute } from 'vue-router';
 
 const router = useRouter();
@@ -11,15 +12,36 @@ const tabs = [
   { label: 'TERMINAL', path: '/terminal' },
 ];
 
-const connectedBoards = ref([
-  { id: 1, name: 'NUCLEO F4' },
-  { id: 2, name: 'NUCLEO F446RE' },
-  { id: 3, name: 'STM32F4 DISCOVERY' },
-  { id: 4, name: 'Microbit' }
-]);
-
-const activeBoard = ref(connectedBoards.value[0]);
+const connectedBoards = ref([]);
+const activeBoard = ref(null);
 const isBoardMenuOpen = ref(false);
+
+let unlistenConnected = null;
+let unlistenDisconnected = null;
+
+onMounted(async () => {
+  unlistenConnected = await listen('board-connected', (event) => {
+    const board = event.payload;
+    const exists = connectedBoards.value.some(b => b.port_name === board.port_name);
+    if (!exists) {
+      connectedBoards.value.push(board);
+      if (!activeBoard.value) activeBoard.value = board;
+    }
+  });
+
+  unlistenDisconnected = await listen('board-disconnected', (event) => {
+    const portName = event.payload;
+    connectedBoards.value = connectedBoards.value.filter(b => b.port_name !== portName);
+    if (activeBoard.value?.port_name === portName) {
+      activeBoard.value = connectedBoards.value[0] || null;
+    }
+  });
+});
+
+onUnmounted(() => {
+  unlistenConnected?.();
+  unlistenDisconnected?.();
+});
 
 const selectBoard = (board) => {
   activeBoard.value = board;
@@ -63,7 +85,7 @@ const closeBoardMenu = () => {
         @click="toggleBoardMenu"
         class="flex items-center justify-between w-48 gap-2 px-5 py-2 text-[11px] sm:text-xs font-bold tracking-wider text-gray-900 transition-colors duration-200 bg-gray-100 rounded-full hover:bg-white"
       >
-        <span class="truncate">{{ activeBoard.name }}</span>
+        <span class="truncate">{{ activeBoard?.product || activeBoard?.port_name || 'No board' }}</span>
         <svg
           xmlns="http://www.w3.org/2000/svg"
           class="w-3 h-3 shrink-0 transition-transform duration-200"
@@ -82,18 +104,26 @@ const closeBoardMenu = () => {
         class="absolute right-0 z-50 w-48 mt-2 overflow-hidden bg-gray-100 rounded-lg shadow-xl top-full"
       >
         <button
+          v-if="connectedBoards.length === 0"
+          type="button"
+          disabled
+          class="w-full px-4 py-2.5 text-left text-xs font-bold tracking-wider text-gray-400 truncate"
+        >
+          No boards connected
+        </button>
+        <button
           v-for="board in connectedBoards"
-          :key="board.id"
+          :key="board.port_name"
           type="button"
           @click="selectBoard(board)"
           :class="[
             'w-full px-4 py-2.5 text-left text-xs font-bold tracking-wider transition-colors duration-200 truncate',
-            board.id === activeBoard.id
+            board.port_name === activeBoard?.port_name
               ? 'bg-gray-300 text-gray-900'
               : 'text-gray-700 hover:bg-gray-200'
           ]"
         >
-          {{ board.name }}
+          {{ board.product || board.port_name }}
         </button>
       </div>
 

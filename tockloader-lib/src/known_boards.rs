@@ -2,6 +2,7 @@ use crate::board_settings::BoardSettings;
 use crate::connection::{ProbeTargetInfo, SerialTargetInfo};
 
 pub trait KnownBoard {
+    fn name(&self) -> &'static str;
     fn serial_target_info(&self) -> SerialTargetInfo;
     fn probe_target_info(&self) -> ProbeTargetInfo;
     fn get_settings(&self) -> BoardSettings;
@@ -10,6 +11,10 @@ pub trait KnownBoard {
 pub struct NucleoF4;
 
 impl KnownBoard for NucleoF4 {
+    fn name(&self) -> &'static str {
+        "NUCLEO-F401RE"
+    }
+
     fn serial_target_info(&self) -> SerialTargetInfo {
         SerialTargetInfo::default()
     }
@@ -35,6 +40,10 @@ impl KnownBoard for NucleoF4 {
 pub struct MicrobitV2;
 
 impl KnownBoard for MicrobitV2 {
+    fn name(&self) -> &'static str {
+        "Microbit"
+    }
+
     fn serial_target_info(&self) -> SerialTargetInfo {
         SerialTargetInfo::default()
     }
@@ -60,6 +69,10 @@ impl KnownBoard for MicrobitV2 {
 pub struct Nrf52840dk;
 
 impl KnownBoard for Nrf52840dk {
+    fn name(&self) -> &'static str {
+        "nRF52840-DK"
+    }
+
     fn serial_target_info(&self) -> SerialTargetInfo {
         SerialTargetInfo::default()
     }
@@ -85,6 +98,10 @@ impl KnownBoard for Nrf52840dk {
 pub struct NucleoU545ReQ;
 
 impl KnownBoard for NucleoU545ReQ {
+    fn name(&self) -> &'static str {
+        "NUCLEO-U545RE-Q"
+    }
+
     fn serial_target_info(&self) -> SerialTargetInfo {
         SerialTargetInfo::default()
     }
@@ -105,4 +122,20 @@ impl KnownBoard for NucleoU545ReQ {
             ram_start_address: 0x20000000,
         }
     }
+}
+
+pub fn all_known_boards() -> Vec<Box<dyn KnownBoard>> {
+    vec![
+        Box::new(NucleoF4),
+        Box::new(MicrobitV2),
+        Box::new(Nrf52840dk),
+        Box::new(NucleoU545ReQ),
+    ]
+}
+
+pub fn known_board_names() -> Vec<String> {
+    all_known_boards()
+        .iter()
+        .map(|b| b.name().to_string())
+        .collect()
 }

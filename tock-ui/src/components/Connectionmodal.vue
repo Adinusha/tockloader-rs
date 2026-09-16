@@ -1,5 +1,6 @@
 <script setup>
-import { ref, watch, onUnmounted } from 'vue';
+import { ref, watch, onMounted, onUnmounted } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
 
 const props = defineProps({
   show: {
@@ -21,18 +22,20 @@ const detectionResult = ref(null);
 const installProgress = ref(0);
 let progressInterval = null;
 
-const knownBoards = [
-  'NUCLEO-F401RE',
-  'NUCLEO-F446RE',
-  'STM32F4 Discovery',
-  'Microbit'
-];
+const knownBoards = ref([]);
+
+onMounted(async () => {
+  try {
+    knownBoards.value = await invoke('get_known_board_names');
+  } catch (e) {
+    console.error('Failed to load known boards:', e);
+    knownBoards.value = [];
+  }
+});
 
 const connectionTypes = [
-  'USB',
-  'UART',
-  'SWD',
-  'JTAG'
+  'Probe-rs',
+  'Serial'
 ];
 
 const resetState = () => {
